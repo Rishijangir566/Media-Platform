@@ -15,11 +15,11 @@ const router = createBrowserRouter([
     element: <GithubCallback />
   },
   {
-    path: "google/callback",
+    path: "/google/callback",
     element: <GoogleCallback />
   },
   {
-    path: "linkedin/callback",
+    path: "/linkedin/callback",
     element: <LinkedinCallback />
   },
   {

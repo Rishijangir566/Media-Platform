@@ -4,17 +4,18 @@ import instance from "./axiosConfig";
 
 const LinkedinCallback = () => {
   const [user, setUser] = useState(null);
+  console.log(user)
   const navigate = useNavigate();
 
   useEffect(() => {
     const url = new URL(window.location.href);
     const code = url.searchParams.get("code");
-//    console.log(code);
+   console.log(code);
    
     if (!code) return;
 
     const redirectUri = `${window.location.origin}/linkedin/callback`;
-    // console.log(redirectUri);
+    console.log(redirectUri);
   
     const authenticateWithLinkedIn = async () => {
       try {

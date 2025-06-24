@@ -3,6 +3,7 @@ import Profile from "../Models/profile.js";
 import { v2 as cloudinary } from "cloudinary";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import axios from "axios"
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -119,19 +120,22 @@ export async function githubAuthorization(req, res) {
   try {
     const { code, redirectUri } = req.body;
 
-    const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
-        code,
-        redirect_uri: redirectUri,
-      }),
-    });
+    const tokenResponse = await fetch(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      }
+    );
 
     const tokenData = await tokenResponse.json();
     const access_token = tokenData.access_token;
@@ -152,7 +156,10 @@ export async function githubAuthorization(req, res) {
     });
 
     if (!userResponse.ok) {
-      return res.status(400).json({ success: false, message: "Failed to fetch GitHub user details" });
+      return res.status(400).json({
+        success: false,
+        message: "Failed to fetch GitHub user details",
+      });
     }
 
     const githubUser = await userResponse.json();
@@ -167,12 +174,15 @@ export async function githubAuthorization(req, res) {
     const emails = await emailsResponse.json();
 
     // Optional: fetch events
-    const eventsResponse = await fetch(`https://api.github.com/users/${githubUser.login}/events`, {
-      headers: {
-        Authorization: `token ${access_token}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-    });
+    const eventsResponse = await fetch(
+      `https://api.github.com/users/${githubUser.login}/events`,
+      {
+        headers: {
+          Authorization: `token ${access_token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    );
     const events = await eventsResponse.json();
 
     res.status(200).json({
@@ -210,15 +220,20 @@ export async function googleAuthorization(req, res) {
     const access_token = tokenData?.access_token;
 
     if (!access_token) {
-      return res.status(400).json({ message: "Failed to get access token from Google" });
+      return res
+        .status(400)
+        .json({ message: "Failed to get access token from Google" });
     }
 
     // Step 2: Use token to fetch user info
-    const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    });
+    const userRes = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      }
+    );
 
     const userInfo = await userRes.json();
 
@@ -232,59 +247,65 @@ export async function googleAuthorization(req, res) {
   }
 }
 
+
+
+
+
+
 export async function linkedinAuthorization(req, res) {
   try {
     const { code, redirectUri } = req.body;
 
-    // Step 1: Exchange code for access token
-    const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: redirectUri,
-        client_id: process.env.LINKEDIN_CLIENT_ID,
-        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
-      }),
-    });
+    const tokenResponse = await axios.post(
+  'https://www.linkedin.com/oauth/v2/accessToken',
+  new URLSearchParams({
+    grant_type: 'authorization_code',
+    code: req.body.code,
+    redirect_uri: req.body.redirectUri,
+    client_id: process.env.LINKEDIN_CLIENT_ID,
+    client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+  }),
+  {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  }
+);
 
-    const tokenData = await tokenRes.json();
-    const access_token = tokenData.access_token;
-    // console.log("hello " , tokenData);
+const accessToken = tokenResponse.data.access_token;
+
+    // const profileRes = await axios.get("https://api.linkedin.com/v2/me", {
+    //   headers: { Authorization: `Bearer ${access_token}` },
+    // });
+
+    // const profile = profileRes.data;
+    // console.log(profile)
     
+    const emailRes = await axios.get(
+      "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    console.log(emailRes)
 
-    if (!access_token) {
-      return res.status(400).json({ message: "LinkedIn token fetch failed" });
-    }
-
-    // Step 2: Fetch LinkedIn profile
-    const [profileRes, emailRes] = await Promise.all([
-      fetch("https://api.linkedin.com/v2/me", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      }),
-      fetch("https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      }),
-    ]);
-
-    const profile = await profileRes.json();
-    const emailData = await emailRes.json();
-    const email = emailData.elements?.[0]?.["handle~"]?.emailAddress;
+    const email = emailRes.data.elements?.[0]?.["handle~"]?.emailAddress;
 
     return res.status(200).json({
       message: "LinkedIn Auth Successful",
       user: {
-        id: profile.id,
-        name: `${profile.localizedFirstName} ${profile.localizedLastName}`,
+        // id: profile.id,
+        // name: `${profile.localizedFirstName} ${profile.localizedLastName}`,
         email,
       },
     });
   } catch (err) {
-    console.error("LinkedIn Auth Error:", err.message);
-    res.status(500).json({ error: "LinkedIn OAuth failed", details: err.message });
+    console.error("LinkedIn Auth Error:", err.response?.data || err.message || err);
+    return res.status(500).json({
+      error: "LinkedIn OAuth failed",
+      details: err.response?.data || err.message || "Unknown error",
+    });
   }
 }
-
 
 

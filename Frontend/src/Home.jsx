@@ -44,17 +44,21 @@ const [form, setForm] = useState({ email: "", password: "" });
 
     window.location.href = authUrl;
   }
+  
 
-  const handleLinkedInLogin = () => {
-    const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
-    const redirectUri = "http://localhost:5173/linkedin/callback";
+  const handleLinkedinLogin = () => {
+  const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID;
 
-    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&scope=openid%20profile%20email`;
+  // ✅ This should match the same redirect_uri used in backend + LinkedIn App
+  const redirectUri = "http://localhost:5173/linkedin/callback";
 
-    window.location.href = authUrl;
-  };
+  const scope = ["openid", "profile", "email"].join(" ");
+  const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+    redirectUri
+  )}&scope=${encodeURIComponent(scope)}`;
+
+  window.location.href = linkedinAuthUrl;
+};
 
   return (
     <>
@@ -103,7 +107,7 @@ const [form, setForm] = useState({ email: "", password: "" });
             className="cursor-pointer hover:scale-110 transition text-white bg-white/20 p-2 rounded-full"
           />
           <FaLinkedin
-            onClick={handleLinkedInLogin}
+            onClick={handleLinkedinLogin}
             className="cursor-pointer hover:scale-110 transition text-blue-400 bg-white/20 p-2 rounded-full"
           />
         </div>
